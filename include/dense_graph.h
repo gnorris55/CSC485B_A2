@@ -97,7 +97,7 @@ namespace csc485b {
                 void two_hop_reachability(DenseGraph g)
             {
 
-                matrix_mult(g.adjacencyMatrix, g.n);
+                //matrix_mult(g.adjacencyMatrix, g.n);
                 // IMPLEMENT ME!
                 // square adjacencyMatrix
                 // then remove the diagonal and clamp values back to [0,1]
