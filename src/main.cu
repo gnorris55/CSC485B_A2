@@ -35,7 +35,7 @@ void run(DeviceGraph g, csc485b::a2::edge_t const* d_edges, std::size_t m)
     auto const build_start = std::chrono::high_resolution_clock::now();
 
     // this code doesn't work yet!
-    csc485b::a2::gpu::build_graph << < 1, 1024 >> > (g, d_edges, m);
+    csc485b::a2::gpu::build_graph << < 1, m >> > (g, d_edges, m);
 
     cudaDeviceSynchronize();
     auto const reachability_start = std::chrono::high_resolution_clock::now();
@@ -108,6 +108,15 @@ void run_sparse(csc485b::a2::edge_t const* d_edges, std::size_t n, std::size_t m
 
     run(d_sg, d_edges, m);
 
+    // check output?
+
+    //std::vector< a2::node_t > host_offsets(n);
+    //std::vector< a2::node_t > host_neighbours(m);
+    //cudaMemcpy(host_offsets, d_sg.neighbours_start_at, sizeof(a2::node_t) * n, cudaMemcpyDeviceToHost);
+    //cudaMemcpy(host_neighbours, d_sg.neighbours, sizeof(a2::node_t) * m, cudaMemcpyDeviceToHost);
+    //std::copy(host_offsets.cbegin(), host_offsets.cend(), std::ostream_iterator< a2::node_t >(std::cout, " "));
+    //std::copy(host_offsets.cbegin(), host_offsets.cend(), std::ostream_iterator< a2::node_t >(std::cout, " "));
+    
     // clean up
     cudaFree(d_neighbours);
     cudaFree(d_offsets);
@@ -138,8 +147,8 @@ int main()
     cudaMemcpyAsync(d_edges, graph.data(), sizeof(a2::edge_t) * m, cudaMemcpyHostToDevice);
 
     // run your code!
-    run_dense(d_edges, n, m);
-    // run_sparse(d_edges, n, m);
+    // run_dense(d_edges, n, m);
+    run_sparse(d_edges, n, m);
 
     return EXIT_SUCCESS;
 }

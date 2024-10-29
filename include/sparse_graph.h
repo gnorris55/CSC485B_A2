@@ -29,7 +29,43 @@ namespace csc485b {
             __global__
                 void build_graph(SparseGraph g, edge_t const* edge_list, std::size_t m)
             {
-                // IMPLEMENT ME!
+                int warp_size = 32;
+                /** STEP 1: Build the "neighbours_start_at" list **/
+                // get thread id
+                const int thread_id = blockIdx.x * blockDim.x + threadIdx.x;
+                // get warp-lane id (0-31)
+                const int warp_lane = threadIdx.x % warp_size;
+                // extract node ids from related edge
+                const int node_a = edge_list[thread_id].x;
+                const int node_b = edge_list[thread_id].y;
+                // get info about threads in warp that share "from" node
+                unsigned int share_mask = __match_any_sync(__activemask(), node_a); // Get mask of share group TODO Figure out how to run this or find alternative
+                const int count = __popc(share_mask); // Count share group
+                // determine whether thread has smallest ID in share group (For solitary ops); hereon "Control thread"
+                int lowest_sharing_thread = 0;// __reduce_min_sync(share_mask, thread_id) == thread_id; // TODO NEED TO SWITCH TO __shfl_xor_sync()
+                if (lowest_sharing_thread) {
+                    atomicAdd(&g.neighbours_start_at[node_a], count); // Control thread securely increments the n_s_a entry
+                }
+
+                /** STEP 2: Tile warps for sequential building of "neighbours" list **/
+                /*
+                __syncthreads();
+                // initialize shared memory variable int* neighbours_build_progress // This will track the number of values add for each node represented by index
+                __shared__ int neighbours_build_progress[g.n];
+                const int warp_id = (int)thread_id / warp_size;
+                // count distance from front within warp (i.e. threads in warp with same node_a will have offsets 0,1,2,3...)
+                in_warp_node_offset = ...;// TODOcount how many nodes in share_mask in front of self
+                // Begin Tiling
+                // for (warp in thread block) { // TODO Iterate through this. Will this work if two thread blocks of different sizes?
+                    // if warp = warp id { // i.e. current warp
+                        // in_warp_node_offset += neighbours_build_progress[node_a];
+                        // __syncwarp(); // Rigid order of read/update; I believe this to be faster than atomicAdd, as entire warp is capable of performing read/write concurrently
+                        // g.neighbours[g.neighbours_start_at[node_a] + in_warp_node_offset] = node_b
+                        // if (lowest_sharing_thread) {
+                            // neighbours_build_progress[node_a] += count // Control thread updates the build progress
+                        // }
+                    // __syncthreads(); // Step the warps through
+                //*/
                 return;
             }
 
