@@ -48,14 +48,69 @@ namespace csc485b {
             }
 
             __device__
-                void matrix_mult(int* adj_mat, int n) {
+                int get_min(int a, int b) {
+                if (a > b)
+                    return b;
+                else
+                    return a;
+
+            }
+
+            __device__ 
+                void advance_matrix_mult(DenseGraph g) {
+
+                unsigned int n = (int)g.n;
+                __shared__ int results[32];
+
+
+                int row = blockIdx.y;
+                int col = blockIdx.x;
+
+
+                if (threadIdx.x + threadIdx.y < n * n) {
+                    
+                    // do not want any self loops included
+                    if (row == col) {
+                        g.adjacencyMatrix[row * n + col] = 0;
+                        return;
+                    }
+
+
+                    float temp = 0;
+                    int hop_value = 0;
+
+                    int vertical_value = g.adjacencyMatrix[(32 * threadIdx.y + threadIdx.x) * n + col];
+                    int horizontal_value = g.adjacencyMatrix[(row * n) + 32 * threadIdx.y + threadIdx.x];
+                    int value = vertical_value * horizontal_value;
+
+                    __syncthreads();
+
+                    hop_value = __any_sync(0xf, value > 0);
+
+                    if (threadIdx.x == 0)
+                        results[threadIdx.y] = hop_value;
+
+                    __syncthreads();
+                    int result = results[threadIdx.x];
+                    g.adjacencyMatrix[blockIdx.y * n + blockIdx.x] = __any_sync(0xf, result > 0);
+
+                }
+
+               
+                return;
 
 
 
-                const int tiling_size = 2;
+            }
+            __device__ 
+                void normal_matrix_mult(DenseGraph g) {
 
-                __shared__ int vert_smem[tiling_size][tiling_size];
-                __shared__ int horizontal_smem[tiling_size][tiling_size];
+                unsigned int n = (int)g.n;
+                int tiling_size = get_min(32, (int)g.n);
+                //const int tiling_size = 32;
+
+                __shared__ int vert_smem[32][32];
+                __shared__ int horizontal_smem[32][32];
                 __syncthreads();
 
 
@@ -63,7 +118,7 @@ namespace csc485b {
                 int col = blockIdx.x * tiling_size + threadIdx.x;
 
                 if (row == col) {
-                    adj_mat[row * n + col] = 0;
+                    g.adjacencyMatrix[row * n + col] = 0;
                     return;
                 }
 
@@ -75,33 +130,32 @@ namespace csc485b {
 
                     // all values in A and B that are in the block will be loaded into shared memory
                     // want to syncronize threads so that all values are loaded into shared memory before we proceed
-                    horizontal_smem[threadIdx.y][threadIdx.x] = adj_mat[row * n + (i * tiling_size + threadIdx.x)];
-                    vert_smem[threadIdx.y][threadIdx.x] = adj_mat[(i * tiling_size + threadIdx.y) * n + col];
+                    horizontal_smem[threadIdx.y][threadIdx.x] = g.adjacencyMatrix[row * n + (i * tiling_size + threadIdx.x)];
+                    vert_smem[threadIdx.y][threadIdx.x] = g.adjacencyMatrix[(i * tiling_size + threadIdx.y) * n + col];
                     __syncthreads();
 
+
+                    //replace this with warp level
                     // will calculate the dot product for twp of the values
                     for (int k = 0; k < tiling_size; k++) {
-                        temp += horizontal_smem[threadIdx.y][k] * vert_smem[k][threadIdx.x];
+                       horizontal_smem[threadIdx.y][k] * vert_smem[k][threadIdx.x];
                         __syncthreads();
                     }
+                    // the for loop above should not exist
                 }
+                if (temp > 0)
+                    temp = 1;
 
-                adj_mat[row * n + col] = temp;
+                g.adjacencyMatrix[row * n + col] = temp;
+                return;
+
+
+
             }
-
-            /**
-              * Repopulates the adjacency matrix as a new graph that represents
-              * the two-hop neighbourhood of input graph g
-              */
             __global__
                 void two_hop_reachability(DenseGraph g)
             {
-
-                //matrix_mult(g.adjacencyMatrix, g.n);
-                // IMPLEMENT ME!
-                // square adjacencyMatrix
-                // then remove the diagonal and clamp values back to [0,1]
-                return;
+                advance_matrix_mult(g);
             }
 
         } // namespace gpu
