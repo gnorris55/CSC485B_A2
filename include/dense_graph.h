@@ -33,7 +33,7 @@ namespace csc485b {
             void build_graph(DenseGraph g, edge_t const * edge_list, std::size_t m)
             {
                 // Get thread ID
-                const int thread_id = blockIdx.x * blockDim.x + threadIdx.x;
+                const int thread_id = blockIdx.x * blockDim.x + blockIdx.y * blockDim.y + threadIdx.x;
 
                 if (thread_id < m) {
 

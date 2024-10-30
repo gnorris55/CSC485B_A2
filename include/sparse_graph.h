@@ -29,8 +29,9 @@ namespace csc485b {
             __global__
                 void build_graph(SparseGraph g, edge_t const* edge_list, std::size_t m)
             {
+                /*
                 int warp_size = 32;
-                /** STEP 1: Build the "neighbours_start_at" list **/
+                /** STEP 1: Build the "neighbours_start_at" list ** /
                 // get thread id
                 const int thread_id = blockIdx.x * blockDim.x + threadIdx.x;
                 // get warp-lane id (0-31)
@@ -46,7 +47,7 @@ namespace csc485b {
                 if (lowest_sharing_thread) {
                     atomicAdd(&g.neighbours_start_at[node_a], count); // Control thread securely increments the n_s_a entry
                 }
-
+                */
                 /** STEP 2: Tile warps for sequential building of "neighbours" list **/
                 /*
                 __syncthreads();
